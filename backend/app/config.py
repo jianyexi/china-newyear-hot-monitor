@@ -1,4 +1,5 @@
 import os
+from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings
 
 
@@ -10,26 +11,41 @@ class Settings(BaseSettings):
     )
     # 抓取配置
     SCRAPE_INTERVAL_MINUTES: int = 30
-    SCRAPE_TOP_N: int = 50  # 每个平台抓取前 N 条
+    SCRAPE_TOP_N: int = 50
     ENABLED_PLATFORMS: list[str] = ["weibo", "zhihu", "baidu", "douyin", "xiaohongshu"]
+    # API 安全
+    API_KEY: str | None = os.getenv("API_KEY", None)  # 设置后需携带 X-API-Key 头
+    RATE_LIMIT_PER_MINUTE: int = 60
     # OpenAI API（可选）
     OPENAI_API_KEY: str | None = os.getenv("OPENAI_API_KEY", None)
     OPENAI_BASE_URL: str | None = os.getenv("OPENAI_BASE_URL", None)
     OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-    # 春节相关关键词（可动态追加）
+    # 春节相关关键词
     CNY_KEYWORDS: list[str] = [
         "春节", "过年", "除夕", "春晚", "年夜饭", "拜年", "红包", "压岁钱",
         "烟花", "爆竹", "庙会", "灯笼", "对联", "福字", "团圆", "年货",
         "春运", "回家", "龙年", "蛇年", "虎年", "兔年", "马年", "羊年",
         "猴年", "鸡年", "狗年", "猪年", "鼠年", "牛年",
     ]
-    # 自定义监控关键词（除春节外的额外关注词）
     CUSTOM_KEYWORDS: list[str] = []
-    # 自动分析配置
     ANALYSIS_ENABLED: bool = True
 
     class Config:
         env_file = ".env"
+
+
+# 配置更新的校验 Schema
+class ConfigUpdate(BaseModel):
+    scrape_interval_minutes: int | None = Field(None, ge=5, le=1440)
+    scrape_top_n: int | None = Field(None, ge=10, le=100)
+    enabled_platforms: list[str] | None = None
+    cny_keywords: list[str] | None = None
+    custom_keywords: list[str] | None = None
+    analysis_enabled: bool | None = None
+    openai_model: str | None = None
+
+
+VALID_PLATFORMS = {"weibo", "zhihu", "baidu", "douyin", "xiaohongshu"}
 
 
 settings = Settings()
@@ -54,14 +70,20 @@ def get_runtime_config() -> dict:
 
 
 def update_runtime_config(updates: dict) -> dict:
-    """更新运行时配置（不重启生效）"""
-    allowed_keys = {
-        "scrape_interval_minutes", "scrape_top_n", "enabled_platforms",
-        "cny_keywords", "custom_keywords", "analysis_enabled", "openai_model",
-    }
-    for key, value in updates.items():
-        if key in allowed_keys:
-            _runtime_overrides[key] = value
+    """更新运行时配置，带校验"""
+    validated = ConfigUpdate(**updates)
+    update_dict = validated.model_dump(exclude_none=True)
+
+    # 校验平台名
+    if "enabled_platforms" in update_dict:
+        invalid = set(update_dict["enabled_platforms"]) - VALID_PLATFORMS
+        if invalid:
+            raise ValueError(f"无效平台: {invalid}. 可选: {VALID_PLATFORMS}")
+        if not update_dict["enabled_platforms"]:
+            raise ValueError("至少启用一个平台")
+
+    for key, value in update_dict.items():
+        _runtime_overrides[key] = value
     return get_runtime_config()
 
 

@@ -1,13 +1,20 @@
+import csv
 import datetime
-from fastapi import APIRouter, Depends, Query, Body
+import io
+import logging
+
+from fastapi import APIRouter, Depends, Query, Body, HTTPException
+from fastapi.responses import StreamingResponse
 from sqlalchemy import select, func, distinct
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.cache import cache_get, cache_set, cache_delete
 from app.database import get_db
 from app.models import HotTopic
 from app.schemas import HotTopicOut, PlatformStats, TrendItem, AnalysisReport
 from app.config import get_runtime_config, update_runtime_config
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["hot-topics"])
 
 
@@ -19,7 +26,11 @@ async def get_topics(
     db: AsyncSession = Depends(get_db),
 ):
     """获取最新热搜列表"""
-    # 取最近一次抓取时间
+    cache_key = f"topics:{platform}:{cny_only}:{limit}"
+    cached = cache_get(cache_key)
+    if cached is not None:
+        return cached
+
     sub = select(func.max(HotTopic.fetched_at))
     if platform:
         sub = sub.where(HotTopic.platform == platform)
@@ -39,7 +50,9 @@ async def get_topics(
         query = query.where(HotTopic.is_cny_related == True)  # noqa: E712
 
     result = await db.execute(query)
-    return result.scalars().all()
+    topics = result.scalars().all()
+    cache_set(cache_key, topics, ttl_seconds=300)
+    return topics
 
 
 @router.get("/topics/history", response_model=list[HotTopicOut])
@@ -96,6 +109,10 @@ async def get_trends(
 @router.get("/stats", response_model=list[PlatformStats])
 async def get_stats(db: AsyncSession = Depends(get_db)):
     """获取各平台统计"""
+    cached = cache_get("stats")
+    if cached is not None:
+        return cached
+
     platforms = (await db.execute(select(distinct(HotTopic.platform)))).scalars().all()
     stats = []
     for p in platforms:
@@ -117,6 +134,7 @@ async def get_stats(db: AsyncSession = Depends(get_db)):
             )
         ).scalar()
         stats.append(PlatformStats(platform=p, total_topics=total, cny_related=cny, latest_fetch=latest))
+    cache_set("stats", stats, ttl_seconds=300)
     return stats
 
 
@@ -153,19 +171,12 @@ async def get_config():
 
 @router.put("/config")
 async def set_config(updates: dict = Body(...)):
-    """
-    更新运行时配置（不重启生效）。
-
-    可更新字段：
-    - scrape_interval_minutes: int - 抓取间隔（分钟）
-    - scrape_top_n: int - 每平台抓取条数
-    - enabled_platforms: list[str] - 启用的平台
-    - cny_keywords: list[str] - 春节关键词
-    - custom_keywords: list[str] - 自定义监控关键词
-    - analysis_enabled: bool - 是否启用智能分析
-    - openai_model: str - AI 分析模型
-    """
-    new_config = update_runtime_config(updates)
+    """更新运行时配置（不重启生效）"""
+    try:
+        new_config = update_runtime_config(updates)
+    except (ValueError, Exception) as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    cache_delete()  # 配置变更后清除缓存
 
     # 如果更新了抓取间隔，重新调度定时任务
     if "scrape_interval_minutes" in updates:
@@ -203,3 +214,43 @@ async def get_available_platforms():
         ],
         "enabled": get_runtime_config()["enabled_platforms"],
     }
+
+
+@router.get("/export/csv")
+async def export_csv(
+    platform: str | None = Query(None, description="平台过滤"),
+    hours: int = Query(24, ge=1, le=168),
+    db: AsyncSession = Depends(get_db),
+):
+    """导出热搜数据为 CSV"""
+    since = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=hours)
+    query = (
+        select(HotTopic)
+        .where(HotTopic.fetched_at >= since)
+        .order_by(HotTopic.fetched_at.desc(), HotTopic.rank)
+    )
+    if platform:
+        query = query.where(HotTopic.platform == platform)
+
+    result = await db.execute(query)
+    rows = result.scalars().all()
+
+    output = io.StringIO()
+    # Add BOM for Excel UTF-8 compatibility
+    output.write('\ufeff')
+    writer = csv.writer(output)
+    writer.writerow(["排名", "平台", "标题", "热度", "URL", "春节相关", "抓取时间"])
+    for r in rows:
+        writer.writerow([
+            r.rank, r.platform, r.title, r.hot_value or "",
+            r.url or "", "是" if r.is_cny_related else "否",
+            r.fetched_at.isoformat() if r.fetched_at else "",
+        ])
+
+    output.seek(0)
+    filename = f"hot_topics_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )

@@ -57,4 +57,15 @@ export const api = {
   getAvailablePlatforms() {
     return request<{ available: Array<{ id: string; name: string; icon: string }>; enabled: string[] }>('/config/platforms');
   },
+
+  getHealth() {
+    return request<Record<string, unknown>>('/health'.replace('/api/health', '/health'));
+  },
+
+  exportCsv(platform?: string, hours = 24) {
+    const params = new URLSearchParams({ hours: String(hours) });
+    if (platform && platform !== 'all') params.set('platform', platform);
+    const url = `${API_BASE}/export/csv?${params}`;
+    window.open(url, '_blank');
+  },
 };

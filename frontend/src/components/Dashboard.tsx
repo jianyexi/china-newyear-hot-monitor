@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Layout, Row, Col, Card, Statistic, Switch, Typography, Space, message, Tabs } from 'antd';
-import { FireOutlined, RocketOutlined, BarChartOutlined, UnorderedListOutlined, SettingOutlined } from '@ant-design/icons';
+import { Layout, Row, Col, Card, Statistic, Switch, Typography, Space, message, Tabs, Button } from 'antd';
+import { FireOutlined, RocketOutlined, BarChartOutlined, UnorderedListOutlined, SettingOutlined, DownloadOutlined } from '@ant-design/icons';
 import PlatformTabs from './PlatformTabs';
 import HotList from './HotList';
 import TrendChart from './TrendChart';
@@ -89,7 +89,12 @@ const Dashboard: React.FC = () => {
               children: (
                 <>
                   <Card style={{ marginBottom: 16 }}>
-                    <PlatformTabs active={platform} onChange={setPlatform} />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                      <PlatformTabs active={platform} onChange={setPlatform} />
+                      <Button icon={<DownloadOutlined />} onClick={() => api.exportCsv(platform)}>
+                        导出 CSV
+                      </Button>
+                    </div>
                     <HotList data={topics} loading={loading} />
                   </Card>
                   <TrendChart />
