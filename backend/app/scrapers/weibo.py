@@ -4,11 +4,19 @@ from app.scrapers.base import BaseScraper
 
 
 class WeiboScraper(BaseScraper):
-    """微博热搜爬虫 - 使用官方 API"""
+    """微博热搜爬虫"""
 
     platform = "weibo"
+    headers = {
+        **BaseScraper.headers,
+        "Referer": "https://weibo.com/",
+        "Accept": "application/json, text/plain, */*",
+        "X-Requested-With": "XMLHttpRequest",
+    }
 
     async def _parse(self, client: httpx.AsyncClient) -> list[HotTopicCreate]:
+        # 先访问首页获取 Cookie
+        await client.get("https://weibo.com/")
         url = "https://weibo.com/ajax/side/hotSearch"
         resp = await client.get(url)
         resp.raise_for_status()

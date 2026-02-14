@@ -9,26 +9,79 @@ class ZhihuScraper(BaseScraper):
     platform = "zhihu"
 
     async def _parse(self, client: httpx.AsyncClient) -> list[HotTopicCreate]:
-        url = "https://www.zhihu.com/api/v3/feed/topstory/hot-lists/total"
-        resp = await client.get(url, params={"limit": 50})
-        resp.raise_for_status()
-        data = resp.json()
-
         topics: list[HotTopicCreate] = []
-        for i, item in enumerate(data.get("data", []), start=1):
-            target = item.get("target", {})
-            title = target.get("title", "")
-            if not title:
-                continue
-            topics.append(
-                HotTopicCreate(
-                    platform=self.platform,
-                    title=title,
-                    url=f"https://www.zhihu.com/question/{target.get('id', '')}",
-                    rank=i,
-                    hot_value=int(item.get("detail_text", "0").replace("万热度", "0000").replace(" 热度", "")),
-                    category=None,
-                    is_cny_related=self._is_cny_related(title),
-                )
+
+        # 方式1: 知乎热榜 API
+        try:
+            headers = {
+                **self.headers,
+                "Referer": "https://www.zhihu.com/hot",
+                "Cookie": "_zap=placeholder",
+            }
+            resp = await client.get(
+                "https://www.zhihu.com/api/v3/feed/topstory/hot-lists/total",
+                params={"limit": 50},
+                headers=headers,
             )
+            resp.raise_for_status()
+            data = resp.json()
+            for i, item in enumerate(data.get("data", []), start=1):
+                target = item.get("target", {})
+                title = target.get("title", "")
+                if not title:
+                    continue
+                try:
+                    hot_val = int(
+                        item.get("detail_text", "0")
+                        .replace("万热度", "0000")
+                        .replace(" 热度", "")
+                        .strip()
+                    )
+                except (ValueError, AttributeError):
+                    hot_val = None
+                topics.append(
+                    HotTopicCreate(
+                        platform=self.platform,
+                        title=title,
+                        url=f"https://www.zhihu.com/question/{target.get('id', '')}",
+                        rank=i,
+                        hot_value=hot_val,
+                        category=None,
+                        is_cny_related=self._is_cny_related(title),
+                    )
+                )
+            if topics:
+                return topics
+        except Exception:
+            pass
+
+        # 方式2: 通过 Tophub 聚合
+        try:
+            from bs4 import BeautifulSoup
+
+            resp = await client.get("https://tophub.today/n/mproPpoq6O")
+            resp.raise_for_status()
+            soup = BeautifulSoup(resp.text, "html.parser")
+            items = soup.select("table tr td a")
+            for i, item in enumerate(items[:50], start=1):
+                title = item.get_text(strip=True)
+                if not title:
+                    continue
+                href = item.get("href", "")
+                if href and not href.startswith("http"):
+                    href = f"https://tophub.today{href}"
+                topics.append(
+                    HotTopicCreate(
+                        platform=self.platform,
+                        title=title,
+                        url=href,
+                        rank=i,
+                        hot_value=None,
+                        category=None,
+                        is_cny_related=self._is_cny_related(title),
+                    )
+                )
+        except Exception:
+            pass
+
         return topics

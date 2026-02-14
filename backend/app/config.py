@@ -3,6 +3,7 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
+    # 默认使用 PostgreSQL；设置 DATABASE_URL=sqlite+aiosqlite:///./hot_monitor.db 可用 SQLite 本地开发
     DATABASE_URL: str = os.getenv(
         "DATABASE_URL",
         "postgresql+asyncpg://postgres:postgres@localhost:5432/hot_monitor",
