@@ -31,12 +31,11 @@ class ZhihuScraper(BaseScraper):
                 if not title:
                     continue
                 try:
-                    hot_val = int(
-                        item.get("detail_text", "0")
-                        .replace("万热度", "0000")
-                        .replace(" 热度", "")
-                        .strip()
-                    )
+                    text = item.get("detail_text", "0").replace(" 热度", "").strip()
+                    if "万" in text:
+                        hot_val = int(float(text.replace("万", "")) * 10000)
+                    else:
+                        hot_val = int(text)
                 except (ValueError, AttributeError):
                     hot_val = None
                 topics.append(

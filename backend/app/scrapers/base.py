@@ -1,7 +1,10 @@
 import abc
+import logging
 import httpx
 from app.config import settings
 from app.schemas import HotTopicCreate
+
+logger = logging.getLogger(__name__)
 
 
 class BaseScraper(abc.ABC):
@@ -24,7 +27,7 @@ class BaseScraper(abc.ABC):
             async with httpx.AsyncClient(headers=self.headers, timeout=15, follow_redirects=True) as client:
                 return await self._parse(client)
         except Exception as e:
-            print(f"[{self.platform}] scrape error: {e}")
+            logger.warning("[%s] scrape error: %s", self.platform, e)
             return []
 
     @abc.abstractmethod

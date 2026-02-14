@@ -1,5 +1,7 @@
 import asyncio
 import datetime
+import logging
+import os
 from contextlib import asynccontextmanager
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -16,37 +18,42 @@ from app.scrapers.baidu import BaiduScraper
 from app.scrapers.douyin import DouyinScraper
 from app.scrapers.xiaohongshu import XiaohongshuScraper
 
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+
 scrapers = [WeiboScraper(), ZhihuScraper(), BaiduScraper(), DouyinScraper(), XiaohongshuScraper()]
 scheduler = AsyncIOScheduler()
 
 
 async def run_scrapers():
     """执行所有爬虫并保存数据"""
-    now = datetime.datetime.utcnow()
-    print(f"[{now}] Starting scrape cycle...")
+    now = datetime.datetime.now(datetime.timezone.utc)
+    logger.info("Starting scrape cycle...")
 
     results = await asyncio.gather(*(s.fetch() for s in scrapers), return_exceptions=True)
 
     async with async_session() as session:
-        count = 0
-        for items in results:
-            if isinstance(items, Exception):
-                print(f"  Scraper error: {items}")
-                continue
-            for item in items:
-                topic = HotTopic(**item.model_dump(), fetched_at=now)
-                session.add(topic)
-                count += 1
-        await session.commit()
-    print(f"  Saved {count} topics.")
+        try:
+            count = 0
+            for items in results:
+                if isinstance(items, Exception):
+                    logger.warning("Scraper error: %s", items)
+                    continue
+                for item in items:
+                    topic = HotTopic(**item.model_dump(), fetched_at=now)
+                    session.add(topic)
+                    count += 1
+            await session.commit()
+            logger.info("Saved %d topics.", count)
+        except Exception as e:
+            await session.rollback()
+            logger.error("Failed to save topics: %s", e)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
-    # 启动时立即抓一次
     await run_scrapers()
-    # 定时抓取
     scheduler.add_job(run_scrapers, "interval", minutes=settings.SCRAPE_INTERVAL_MINUTES)
     scheduler.start()
     yield
@@ -55,16 +62,17 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="中国过年热点舆论监控平台",
-    description="自动抓取微博/知乎/百度/抖音热搜，聚焦春节相关话题",
+    description="自动抓取微博/知乎/百度/抖音/小红书热搜，聚焦春节相关话题",
     version="1.0.0",
     lifespan=lifespan,
 )
 
+allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET"],
     allow_headers=["*"],
 )
 

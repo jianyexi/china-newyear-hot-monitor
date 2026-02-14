@@ -17,7 +17,8 @@ class HotTopic(Base):
     category: Mapped[str | None] = mapped_column(String(50), nullable=True, comment="分类标签")
     is_cny_related: Mapped[bool] = mapped_column(Boolean, default=False, comment="是否春节相关")
     fetched_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime, default=datetime.datetime.utcnow, nullable=False, comment="抓取时间"
+        DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc),
+        nullable=False, comment="抓取时间"
     )
 
     __table_args__ = (

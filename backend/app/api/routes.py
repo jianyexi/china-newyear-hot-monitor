@@ -49,7 +49,7 @@ async def get_history(
     db: AsyncSession = Depends(get_db),
 ):
     """获取历史热搜"""
-    since = datetime.datetime.utcnow() - datetime.timedelta(hours=hours)
+    since = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=hours)
     query = (
         select(HotTopic)
         .where(HotTopic.fetched_at >= since)
@@ -69,7 +69,7 @@ async def get_trends(
     db: AsyncSession = Depends(get_db),
 ):
     """获取话题趋势"""
-    since = datetime.datetime.utcnow() - datetime.timedelta(hours=hours)
+    since = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=hours)
     query = (
         select(HotTopic)
         .where(HotTopic.title.contains(title), HotTopic.fetched_at >= since)
@@ -130,7 +130,7 @@ async def get_analysis(db: AsyncSession = Depends(get_db)):
         from app.schemas import AnalysisReport as AR
         import datetime
         return AR(
-            generated_at=datetime.datetime.utcnow(),
+            generated_at=datetime.datetime.now(datetime.timezone.utc),
             total_topics=0, platforms_covered=[], categories=[],
             cross_platform_hot=[], platform_insights=[], cny_summary={},
         )
