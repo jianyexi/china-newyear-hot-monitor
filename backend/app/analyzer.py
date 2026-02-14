@@ -279,7 +279,18 @@ async def generate_analysis(topics: list[HotTopicOut]) -> AnalysisReport:
     # 4. 春节专题
     cny_summary = _build_cny_summary(topics)
 
-    # 5. LLM 深度分析
+    # 5. 情感分析汇总
+    sentiment_counter = Counter()
+    for t in topics:
+        sentiment_counter[t.sentiment or "neutral"] += 1
+
+    sentiment_summary = {
+        "positive": sentiment_counter.get("positive", 0),
+        "neutral": sentiment_counter.get("neutral", 0),
+        "negative": sentiment_counter.get("negative", 0),
+    }
+
+    # 6. LLM 深度分析
     ai_analysis = await _llm_analysis(topics)
 
     return AnalysisReport(
@@ -290,5 +301,6 @@ async def generate_analysis(topics: list[HotTopicOut]) -> AnalysisReport:
         cross_platform_hot=cross_platform,
         platform_insights=platform_insights,
         cny_summary=cny_summary,
+        sentiment_summary=sentiment_summary,
         ai_analysis=ai_analysis,
     )

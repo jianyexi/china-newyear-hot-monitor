@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, master]
   pull_request:
-    branches: [main]
+    branches: [main, master]
 
 jobs:
   backend:
@@ -35,6 +35,12 @@ jobs:
         run: |
           pip install ruff
           ruff check backend/
+      - name: Run tests
+        env:
+          DATABASE_URL: sqlite+aiosqlite:///./test.db
+        run: |
+          PYTHONPATH=. python -m pytest tests/ -v --tb=short
+        working-directory: backend
       - name: Test import
         env:
           DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/hot_monitor

@@ -1,5 +1,5 @@
 import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class HotTopicBase(BaseModel):
@@ -10,6 +10,8 @@ class HotTopicBase(BaseModel):
     hot_value: int | None = None
     category: str | None = None
     is_cny_related: bool = False
+    sentiment: str | None = None
+    sentiment_score: float | None = None
 
 
 class HotTopicCreate(HotTopicBase):
@@ -19,6 +21,7 @@ class HotTopicCreate(HotTopicBase):
 class HotTopicOut(HotTopicBase):
     id: int
     fetched_at: datetime.datetime
+    dedup_key: str | None = None
 
     class Config:
         from_attributes = True
@@ -61,13 +64,88 @@ class AnalysisReport(BaseModel):
     generated_at: datetime.datetime
     total_topics: int
     platforms_covered: list[str]
-    # 分类分析
     categories: list[CategoryBreakdown]
-    # 跨平台热点（出现在多个平台）
     cross_platform_hot: list[dict]
-    # 各平台独家洞察
     platform_insights: list[PlatformInsight]
-    # 春节专题
     cny_summary: dict
-    # AI 深度分析（如果配置了 LLM）
+    sentiment_summary: dict | None = None
     ai_analysis: str | None = None
+
+
+# ---- 搜索相关 ----
+
+class SearchQuery(BaseModel):
+    keyword: str = Field(..., min_length=1, max_length=100)
+    platform: str | None = None
+    hours: int = Field(default=24, ge=1, le=720)
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(default=20, ge=1, le=100)
+
+
+class SearchResult(BaseModel):
+    total: int
+    page: int
+    page_size: int
+    items: list[HotTopicOut]
+
+
+# ---- 话题生命周期 ----
+
+class TopicLifecycleOut(BaseModel):
+    id: int
+    platform: str
+    title: str
+    first_seen: datetime.datetime
+    last_seen: datetime.datetime
+    peak_time: datetime.datetime | None
+    peak_rank: int | None
+    peak_hot_value: int | None
+    appearances: int
+    status: str
+
+    class Config:
+        from_attributes = True
+
+
+# ---- 每日报告 ----
+
+class DailyReportOut(BaseModel):
+    id: int
+    report_date: str
+    report_type: str
+    total_topics: int
+    summary: str | None
+    created_at: datetime.datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ---- 告警 ----
+
+class AlertRuleCreate(BaseModel):
+    name: str
+    rule_type: str = Field(..., pattern="^(spike|keyword|failure)$")
+    config_json: str | None = None
+    webhook_url: str | None = None
+    enabled: bool = True
+
+
+class AlertRuleOut(AlertRuleCreate):
+    id: int
+    created_at: datetime.datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ---- 时间对比 ----
+
+class CompareResult(BaseModel):
+    period1: str
+    period2: str
+    new_topics: list[str]
+    dropped_topics: list[str]
+    rising_topics: list[dict]
+    falling_topics: list[dict]
+    common_count: int

@@ -7,12 +7,15 @@ class WeiboScraper(BaseScraper):
     """微博热搜爬虫"""
 
     platform = "weibo"
-    headers = {
-        **BaseScraper.headers,
-        "Referer": "https://weibo.com/",
-        "Accept": "application/json, text/plain, */*",
-        "X-Requested-With": "XMLHttpRequest",
-    }
+
+    def _get_headers(self) -> dict:
+        h = super()._get_headers()
+        h.update({
+            "Referer": "https://weibo.com/",
+            "Accept": "application/json, text/plain, */*",
+            "X-Requested-With": "XMLHttpRequest",
+        })
+        return h
 
     async def _parse(self, client: httpx.AsyncClient) -> list[HotTopicCreate]:
         # 先访问首页获取 Cookie

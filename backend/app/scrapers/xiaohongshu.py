@@ -17,7 +17,7 @@ class XiaohongshuScraper(BaseScraper):
             resp = await client.get(
                 "https://www.xiaohongshu.com/explore",
                 headers={
-                    **self.headers,
+                    **self._get_headers(),
                     "Referer": "https://www.xiaohongshu.com/",
                 },
             )

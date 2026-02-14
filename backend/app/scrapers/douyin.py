@@ -14,7 +14,7 @@ class DouyinScraper(BaseScraper):
         # 方式1: 尝试抖音官方接口
         try:
             url = "https://www.douyin.com/aweme/v1/web/hot/search/list/"
-            headers = {**self.headers, "Referer": "https://www.douyin.com/"}
+            headers = {**self._get_headers(), "Referer": "https://www.douyin.com/"}
             resp = await client.get(url, headers=headers)
             resp.raise_for_status()
             data = resp.json()

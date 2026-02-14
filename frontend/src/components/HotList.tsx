@@ -56,6 +56,22 @@ const columns = [
     width: 100,
     render: (c: string | null) => c || '-',
   },
+  {
+    title: '情感',
+    dataIndex: 'sentiment',
+    key: 'sentiment',
+    width: 70,
+    render: (s: string | null) => {
+      if (!s) return '-';
+      const map: Record<string, { emoji: string; color: string }> = {
+        positive: { emoji: '😊', color: '#52c41a' },
+        neutral: { emoji: '😐', color: '#faad14' },
+        negative: { emoji: '😟', color: '#f5222d' },
+      };
+      const cfg = map[s] || { emoji: '❓', color: '#999' };
+      return <span style={{ color: cfg.color }}>{cfg.emoji}</span>;
+    },
+  },
 ];
 
 const HotList: React.FC<Props> = ({ data, loading }) => {

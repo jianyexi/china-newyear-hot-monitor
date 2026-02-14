@@ -7,6 +7,8 @@ export interface HotTopic {
   hot_value: number | null;
   category: string | null;
   is_cny_related: boolean;
+  sentiment: string | null;
+  sentiment_score: number | null;
   fetched_at: string;
 }
 
@@ -75,5 +77,78 @@ export interface AnalysisReport {
     top_topics: string[];
     sub_themes: Record<string, string[]>;
   };
+  sentiment_summary: {
+    positive: number;
+    neutral: number;
+    negative: number;
+  } | null;
   ai_analysis: string | null;
+}
+
+export interface SearchResult {
+  total: number;
+  page: number;
+  page_size: number;
+  items: HotTopic[];
+}
+
+export interface TopicLifecycle {
+  id: number;
+  platform: string;
+  title: string;
+  first_seen: string;
+  last_seen: string;
+  peak_time: string | null;
+  peak_rank: number | null;
+  peak_hot_value: number | null;
+  appearances: number;
+  status: string;
+}
+
+export interface DailyReportItem {
+  id: number;
+  report_date: string;
+  report_type: string;
+  total_topics: number;
+  summary: string | null;
+  created_at: string;
+}
+
+export interface AlertRule {
+  id?: number;
+  name: string;
+  rule_type: string;
+  config_json: string | null;
+  webhook_url: string | null;
+  enabled: boolean;
+  created_at?: string;
+}
+
+export interface CompareResult {
+  period1: string;
+  period2: string;
+  new_topics: string[];
+  dropped_topics: string[];
+  rising_topics: Array<{ title: string; rank_before: number; rank_after: number; change: number }>;
+  falling_topics: Array<{ title: string; rank_before: number; rank_after: number; change: number }>;
+  common_count: number;
+}
+
+export interface SentimentStats {
+  positive: number;
+  neutral: number;
+  negative: number;
+  total: number;
+  details: Array<{
+    title: string;
+    platform: string;
+    sentiment: string;
+    score: number;
+    rank: number;
+  }>;
+}
+
+export interface WordCloudItem {
+  name: string;
+  value: number;
 }

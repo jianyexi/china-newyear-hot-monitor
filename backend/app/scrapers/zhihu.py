@@ -14,7 +14,7 @@ class ZhihuScraper(BaseScraper):
         # 方式1: 知乎热榜 API
         try:
             headers = {
-                **self.headers,
+                **self._get_headers(),
                 "Referer": "https://www.zhihu.com/hot",
                 "Cookie": "_zap=placeholder",
             }
