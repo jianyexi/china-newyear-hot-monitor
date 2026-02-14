@@ -1,7 +1,7 @@
 import abc
 import logging
 import httpx
-from app.config import settings
+from app.config import get_effective_keywords
 from app.schemas import HotTopicCreate
 
 logger = logging.getLogger(__name__)
@@ -20,7 +20,7 @@ class BaseScraper(abc.ABC):
     }
 
     def _is_cny_related(self, title: str) -> bool:
-        return any(kw in title for kw in settings.CNY_KEYWORDS)
+        return any(kw in title for kw in get_effective_keywords())
 
     async def fetch(self) -> list[HotTopicCreate]:
         try:

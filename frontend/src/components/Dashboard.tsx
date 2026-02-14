@@ -1,10 +1,11 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Layout, Row, Col, Card, Statistic, Switch, Typography, Space, message, Tabs } from 'antd';
-import { FireOutlined, RocketOutlined, BarChartOutlined, UnorderedListOutlined } from '@ant-design/icons';
+import { FireOutlined, RocketOutlined, BarChartOutlined, UnorderedListOutlined, SettingOutlined } from '@ant-design/icons';
 import PlatformTabs from './PlatformTabs';
 import HotList from './HotList';
 import TrendChart from './TrendChart';
 import AnalysisPanel from './AnalysisPanel';
+import SettingsPanel from './SettingsPanel';
 import { api } from '../services/api';
 import type { HotTopic, PlatformType, PlatformStats } from '../types';
 
@@ -99,6 +100,11 @@ const Dashboard: React.FC = () => {
               key: 'analysis',
               label: <span><BarChartOutlined /> 智能分析</span>,
               children: <AnalysisPanel />,
+            },
+            {
+              key: 'settings',
+              label: <span><SettingOutlined /> 系统设置</span>,
+              children: <SettingsPanel />,
             },
           ]}
         />

@@ -8,7 +8,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.config import settings
+from app.config import settings, get_enabled_platforms
 from app.database import init_db, async_session
 from app.models import HotTopic
 from app.api.routes import router
@@ -21,16 +21,24 @@ from app.scrapers.xiaohongshu import XiaohongshuScraper
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
-scrapers = [WeiboScraper(), ZhihuScraper(), BaiduScraper(), DouyinScraper(), XiaohongshuScraper()]
+ALL_SCRAPERS = {
+    "weibo": WeiboScraper(),
+    "zhihu": ZhihuScraper(),
+    "baidu": BaiduScraper(),
+    "douyin": DouyinScraper(),
+    "xiaohongshu": XiaohongshuScraper(),
+}
 scheduler = AsyncIOScheduler()
 
 
 async def run_scrapers():
-    """执行所有爬虫并保存数据"""
+    """执行启用的爬虫并保存数据"""
     now = datetime.datetime.now(datetime.timezone.utc)
-    logger.info("Starting scrape cycle...")
+    enabled = get_enabled_platforms()
+    active_scrapers = [s for name, s in ALL_SCRAPERS.items() if name in enabled]
+    logger.info("Starting scrape cycle... (platforms: %s)", ", ".join(enabled))
 
-    results = await asyncio.gather(*(s.fetch() for s in scrapers), return_exceptions=True)
+    results = await asyncio.gather(*(s.fetch() for s in active_scrapers), return_exceptions=True)
 
     async with async_session() as session:
         try:
@@ -72,7 +80,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["GET"],
+    allow_methods=["GET", "PUT", "POST"],
     allow_headers=["*"],
 )
 

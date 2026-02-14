@@ -37,4 +37,24 @@ export const api = {
   getAnalysis() {
     return request<AnalysisReport>('/analysis');
   },
+
+  getConfig() {
+    return request<Record<string, unknown>>('/config');
+  },
+
+  updateConfig(updates: Record<string, unknown>) {
+    return fetch(`${API_BASE}/config`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    }).then(r => r.json());
+  },
+
+  triggerScrape() {
+    return fetch(`${API_BASE}/scrape`, { method: 'POST' }).then(r => r.json());
+  },
+
+  getAvailablePlatforms() {
+    return request<{ available: Array<{ id: string; name: string; icon: string }>; enabled: string[] }>('/config/platforms');
+  },
 };

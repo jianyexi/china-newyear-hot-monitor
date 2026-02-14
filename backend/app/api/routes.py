@@ -1,11 +1,12 @@
 import datetime
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Body
 from sqlalchemy import select, func, distinct
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models import HotTopic
 from app.schemas import HotTopicOut, PlatformStats, TrendItem, AnalysisReport
+from app.config import get_runtime_config, update_runtime_config
 
 router = APIRouter(prefix="/api", tags=["hot-topics"])
 
@@ -140,3 +141,65 @@ async def get_analysis(db: AsyncSession = Depends(get_db)):
     topics = [HotTopicOut.model_validate(t) for t in result.scalars().all()]
 
     return await generate_analysis(topics)
+
+
+# ---- 配置管理 API ----
+
+@router.get("/config")
+async def get_config():
+    """获取当前系统配置"""
+    return get_runtime_config()
+
+
+@router.put("/config")
+async def set_config(updates: dict = Body(...)):
+    """
+    更新运行时配置（不重启生效）。
+
+    可更新字段：
+    - scrape_interval_minutes: int - 抓取间隔（分钟）
+    - scrape_top_n: int - 每平台抓取条数
+    - enabled_platforms: list[str] - 启用的平台
+    - cny_keywords: list[str] - 春节关键词
+    - custom_keywords: list[str] - 自定义监控关键词
+    - analysis_enabled: bool - 是否启用智能分析
+    - openai_model: str - AI 分析模型
+    """
+    new_config = update_runtime_config(updates)
+
+    # 如果更新了抓取间隔，重新调度定时任务
+    if "scrape_interval_minutes" in updates:
+        from app.main import scheduler, run_scrapers
+        jobs = scheduler.get_jobs()
+        for job in jobs:
+            scheduler.remove_job(job.id)
+        scheduler.add_job(
+            run_scrapers, "interval",
+            minutes=new_config["scrape_interval_minutes"],
+        )
+
+    return {"message": "配置已更新", "config": new_config}
+
+
+@router.post("/scrape")
+async def trigger_scrape():
+    """手动触发一次抓取"""
+    import asyncio
+    from app.main import run_scrapers
+    asyncio.create_task(run_scrapers())
+    return {"message": "抓取任务已触发，请稍后刷新查看结果"}
+
+
+@router.get("/config/platforms")
+async def get_available_platforms():
+    """获取所有可用平台列表"""
+    return {
+        "available": [
+            {"id": "weibo", "name": "微博", "icon": "📱"},
+            {"id": "zhihu", "name": "知乎", "icon": "💬"},
+            {"id": "baidu", "name": "百度", "icon": "🔍"},
+            {"id": "douyin", "name": "抖音", "icon": "🎵"},
+            {"id": "xiaohongshu", "name": "小红书", "icon": "📕"},
+        ],
+        "enabled": get_runtime_config()["enabled_platforms"],
+    }
