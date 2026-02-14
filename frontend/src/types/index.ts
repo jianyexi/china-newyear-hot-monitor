@@ -41,3 +41,39 @@ export const PLATFORM_COLORS: Record<string, string> = {
   douyin: '#000000',
   xiaohongshu: '#FF2442',
 };
+
+export interface CategoryBreakdown {
+  category: string;
+  count: number;
+  percentage: number;
+  top_topics: string[];
+}
+
+export interface PlatformInsight {
+  platform: string;
+  top_topics: string[];
+  cny_ratio: number;
+  unique_topics: string[];
+}
+
+export interface AnalysisReport {
+  generated_at: string;
+  total_topics: number;
+  platforms_covered: string[];
+  categories: CategoryBreakdown[];
+  cross_platform_hot: Array<{
+    keyword: string;
+    platforms: string[];
+    titles: Record<string, string>;
+    platform_count: number;
+  }>;
+  platform_insights: PlatformInsight[];
+  cny_summary: {
+    count: number;
+    ratio: number;
+    platforms: Record<string, number>;
+    top_topics: string[];
+    sub_themes: Record<string, string[]>;
+  };
+  ai_analysis: string | null;
+}

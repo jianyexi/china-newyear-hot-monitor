@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Layout, Row, Col, Card, Statistic, Switch, Typography, Space, message } from 'antd';
-import { FireOutlined, RocketOutlined } from '@ant-design/icons';
+import { Layout, Row, Col, Card, Statistic, Switch, Typography, Space, message, Tabs } from 'antd';
+import { FireOutlined, RocketOutlined, BarChartOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import PlatformTabs from './PlatformTabs';
 import HotList from './HotList';
 import TrendChart from './TrendChart';
+import AnalysisPanel from './AnalysisPanel';
 import { api } from '../services/api';
 import type { HotTopic, PlatformType, PlatformStats } from '../types';
 
@@ -76,12 +77,31 @@ const Dashboard: React.FC = () => {
           </Col>
         </Row>
 
-        <Card style={{ marginBottom: 16 }}>
-          <PlatformTabs active={platform} onChange={setPlatform} />
-          <HotList data={topics} loading={loading} />
-        </Card>
-
-        <TrendChart />
+        <Tabs
+          defaultActiveKey="list"
+          size="large"
+          style={{ marginBottom: 16 }}
+          items={[
+            {
+              key: 'list',
+              label: <span><UnorderedListOutlined /> 热搜列表</span>,
+              children: (
+                <>
+                  <Card style={{ marginBottom: 16 }}>
+                    <PlatformTabs active={platform} onChange={setPlatform} />
+                    <HotList data={topics} loading={loading} />
+                  </Card>
+                  <TrendChart />
+                </>
+              ),
+            },
+            {
+              key: 'analysis',
+              label: <span><BarChartOutlined /> 智能分析</span>,
+              children: <AnalysisPanel />,
+            },
+          ]}
+        />
       </Content>
       <Footer style={{ textAlign: 'center' }}>
         中国过年热点舆论监控平台 ©{new Date().getFullYear()} | 数据每30分钟自动更新

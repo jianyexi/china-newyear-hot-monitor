@@ -9,6 +9,10 @@ class Settings(BaseSettings):
         "postgresql+asyncpg://postgres:postgres@localhost:5432/hot_monitor",
     )
     SCRAPE_INTERVAL_MINUTES: int = 30
+    # OpenAI API（可选，不配置则使用纯规则分析）
+    OPENAI_API_KEY: str | None = os.getenv("OPENAI_API_KEY", None)
+    OPENAI_BASE_URL: str | None = os.getenv("OPENAI_BASE_URL", None)
+    OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
     # 春节相关关键词
     CNY_KEYWORDS: list[str] = [
         "春节", "过年", "除夕", "春晚", "年夜饭", "拜年", "红包", "压岁钱",

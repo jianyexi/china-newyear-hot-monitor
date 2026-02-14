@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models import HotTopic
-from app.schemas import HotTopicOut, PlatformStats, TrendItem
+from app.schemas import HotTopicOut, PlatformStats, TrendItem, AnalysisReport
 
 router = APIRouter(prefix="/api", tags=["hot-topics"])
 
@@ -117,3 +117,26 @@ async def get_stats(db: AsyncSession = Depends(get_db)):
         ).scalar()
         stats.append(PlatformStats(platform=p, total_topics=total, cny_related=cny, latest_fetch=latest))
     return stats
+
+
+@router.get("/analysis", response_model=AnalysisReport)
+async def get_analysis(db: AsyncSession = Depends(get_db)):
+    """获取自动分析报告：分类统计、跨平台热点、春节专题、AI深度分析"""
+    from app.analyzer import generate_analysis
+
+    # 取最新一批数据
+    latest_time = (await db.execute(select(func.max(HotTopic.fetched_at)))).scalar()
+    if not latest_time:
+        from app.schemas import AnalysisReport as AR
+        import datetime
+        return AR(
+            generated_at=datetime.datetime.utcnow(),
+            total_topics=0, platforms_covered=[], categories=[],
+            cross_platform_hot=[], platform_insights=[], cny_summary={},
+        )
+
+    query = select(HotTopic).where(HotTopic.fetched_at == latest_time).order_by(HotTopic.rank)
+    result = await db.execute(query)
+    topics = [HotTopicOut.model_validate(t) for t in result.scalars().all()]
+
+    return await generate_analysis(topics)

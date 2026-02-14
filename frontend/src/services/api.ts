@@ -1,4 +1,4 @@
-import type { HotTopic, TrendItem, PlatformStats } from '../types';
+import type { HotTopic, TrendItem, PlatformStats, AnalysisReport } from '../types';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000/api';
 
@@ -32,5 +32,9 @@ export const api = {
 
   getStats() {
     return request<PlatformStats[]>('/stats');
+  },
+
+  getAnalysis() {
+    return request<AnalysisReport>('/analysis');
   },
 };
