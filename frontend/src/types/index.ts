@@ -24,13 +24,14 @@ export interface PlatformStats {
   latest_fetch: string | null;
 }
 
-export type PlatformType = 'all' | 'weibo' | 'zhihu' | 'baidu' | 'douyin';
+export type PlatformType = 'all' | 'weibo' | 'zhihu' | 'baidu' | 'douyin' | 'xiaohongshu';
 
 export const PLATFORM_LABELS: Record<string, string> = {
   weibo: '微博',
   zhihu: '知乎',
   baidu: '百度',
   douyin: '抖音',
+  xiaohongshu: '小红书',
 };
 
 export const PLATFORM_COLORS: Record<string, string> = {
@@ -38,4 +39,5 @@ export const PLATFORM_COLORS: Record<string, string> = {
   zhihu: '#0066FF',
   baidu: '#2932E1',
   douyin: '#000000',
+  xiaohongshu: '#FF2442',
 };

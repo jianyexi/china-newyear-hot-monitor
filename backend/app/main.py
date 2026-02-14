@@ -14,8 +14,9 @@ from app.scrapers.weibo import WeiboScraper
 from app.scrapers.zhihu import ZhihuScraper
 from app.scrapers.baidu import BaiduScraper
 from app.scrapers.douyin import DouyinScraper
+from app.scrapers.xiaohongshu import XiaohongshuScraper
 
-scrapers = [WeiboScraper(), ZhihuScraper(), BaiduScraper(), DouyinScraper()]
+scrapers = [WeiboScraper(), ZhihuScraper(), BaiduScraper(), DouyinScraper(), XiaohongshuScraper()]
 scheduler = AsyncIOScheduler()
 
 

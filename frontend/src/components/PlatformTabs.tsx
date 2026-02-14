@@ -14,6 +14,7 @@ const platforms: { key: PlatformType; label: string }[] = [
   { key: 'zhihu', label: `💬 ${PLATFORM_LABELS.zhihu}` },
   { key: 'baidu', label: `🔍 ${PLATFORM_LABELS.baidu}` },
   { key: 'douyin', label: `🎵 ${PLATFORM_LABELS.douyin}` },
+  { key: 'xiaohongshu', label: `📕 ${PLATFORM_LABELS.xiaohongshu}` },
 ];
 
 const PlatformTabs: React.FC<Props> = ({ active, onChange }) => {
